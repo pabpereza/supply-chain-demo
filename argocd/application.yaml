@@ -3,6 +3,9 @@ kind: Application
 metadata:
   name: web
   namespace: argocd
+  annotations:
+    # Kyverno cambia el tag por el digest: el diff se calcula en el servidor, contando con los webhooks
+    argocd.argoproj.io/compare-options: ServerSideDiff=true,IncludeMutationWebhook=true
 spec:
   project: default
   source:
@@ -18,3 +21,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
