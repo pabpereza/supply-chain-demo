@@ -19,6 +19,8 @@ spec:
   matchImageReferences:
     - glob: 'docker.io/pabpereza/*'
   validationConfigurations:
+    # El digest lo fija el pipeline en Git (ci.sh): Kyverno no reescribe nada y
+    # Argo CD no ve diferencias. verifyDigest rechaza las imágenes sin digest
     mutateDigest: false
     verifyDigest: true
     required: true
