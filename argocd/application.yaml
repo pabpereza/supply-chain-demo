@@ -3,9 +3,6 @@ kind: Application
 metadata:
   name: web
   namespace: argocd
-  annotations:
-    # Kyverno cambia el tag por el digest: el diff se calcula en el servidor, contando con los webhooks
-    argocd.argoproj.io/compare-options: ServerSideDiff=true,IncludeMutationWebhook=true
 spec:
   project: default
   source:
@@ -15,10 +12,8 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: demo
+  # Sync manual: en directo se ve cuándo entra cada commit y no hay reintentos
+  # de un sync fallido que bloqueen el siguiente
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true

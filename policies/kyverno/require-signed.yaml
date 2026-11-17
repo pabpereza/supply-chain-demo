@@ -19,7 +19,7 @@ spec:
   matchImageReferences:
     - glob: 'docker.io/pabpereza/*'
   validationConfigurations:
-    mutateDigest: true
+    mutateDigest: false
     verifyDigest: true
     required: true
   attestors:

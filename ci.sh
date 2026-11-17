@@ -30,6 +30,6 @@ if [[ $SIGN == 1 ]]; then
     "$REPO@$DIGEST" 2>&1 | grep -v -i deprecat || true
 fi
 
-echo "▶ deploy/deployment.yaml → $REPO:$TAG"
-sed -i.bak -E "s#image: .*supply-chain-demo.*#image: $REPO:$TAG#" deploy/deployment.yaml && rm deploy/deployment.yaml.bak
+echo "▶ deploy/deployment.yaml → $REPO:$TAG@$DIGEST"
+sed -i.bak -E "s#image: .*supply-chain-demo.*#image: $REPO:$TAG@$DIGEST#" deploy/deployment.yaml && rm deploy/deployment.yaml.bak
 echo "✔ listo: haz commit y push de deploy/"
