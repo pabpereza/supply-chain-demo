@@ -38,6 +38,7 @@ grype sbom:sbom.cdx.json
 | `ci.sh` | El pipeline: build, Syft, Grype, push, firma, SBOM firmado y digest en `deploy/`. `./ci.sh` lo ejecuta entero y `./ci.sh <paso>` uno solo |
 | `.github/workflows/ci.yml` | El mismo pipeline en GitHub Actions: llama a `./ci.sh <paso>` en cada step |
 | `attack.sh` | Sube la imagen del atacante con el tag que quieras |
+| `signing-config.json` | Configuración de firma de Cosign sin Rekor ni CA: la usan `ci.sh` y la práctica |
 | `cosign.pub` | Clave pública del pipeline (la privada nunca está en el repo) |
 
 ## GitHub Actions

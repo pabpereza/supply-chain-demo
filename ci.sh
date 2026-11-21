@@ -36,7 +36,7 @@ paso_build() {
 # El inventario primero: Grype escanea el SBOM y el mismo SBOM viaja firmado con la imagen
 paso_sbom() {
   echo "▶ syft (SBOM CycloneDX) → sbom.cdx.json"
-  SYFT_FILE_METADATA_SELECTION=none syft -q "$REPO:$TAG" -o cyclonedx-json=sbom.cdx.json
+  syft -q "$REPO:$TAG" -o cyclonedx-json=sbom.cdx.json
   echo "  $(jq '.components | length' sbom.cdx.json) componentes"
 }
 
@@ -56,7 +56,7 @@ paso_sign() {
   [[ $SIGN == 1 ]] || { echo "▷ firma desactivada (SIGN=0)"; return; }
   echo "▶ cosign sign (clave del pipeline, sin Rekor)"
   COSIGN_PASSWORD="" cosign sign --yes --key "$COSIGN_KEY" \
-    --use-signing-config=false --tlog-upload=false \
+    --signing-config signing-config.json \
     "$REPO@$(digest)" 2>&1 | grep -v -i deprecat || true
 }
 
@@ -64,7 +64,7 @@ paso_attest() {
   [[ $SBOM == 1 ]] || { echo "▷ SBOM sin adjuntar (SBOM=0)"; return; }
   echo "▶ cosign attest (SBOM firmado y adjunto a la imagen)"
   COSIGN_PASSWORD="" cosign attest --yes --key "$COSIGN_KEY" --type cyclonedx \
-    --predicate sbom.cdx.json --use-signing-config=false --tlog-upload=false \
+    --predicate sbom.cdx.json --signing-config signing-config.json \
     "$REPO@$(digest)" 2>&1 | grep -v -i -E 'deprecat|payload from|signing artifact' || true
 }
 
