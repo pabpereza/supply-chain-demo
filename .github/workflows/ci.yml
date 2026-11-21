@@ -1,0 +1,115 @@
+# El mismo pipeline que ./ci.sh, en GitHub Actions.
+#
+# SINCRONÍA CON ci.sh: aquí no hay lógica del pipeline. Este workflow solo
+# prepara el entorno (herramientas con las mismas versiones, login y clave) y
+# llama a "./ci.sh <paso>" en el mismo orden que PASOS en ci.sh. Si cambias un
+# paso, cámbialo en ci.sh; si añades, quitas o renombras uno, hazlo en los dos.
+# El step "Pasos sincronizados con ci.sh" falla si no coinciden.
+#
+# Secretos del repo: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN y COSIGN_PRIVATE_KEY
+# (el contenido de cosign.key, generada sin contraseña).
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**']
+  workflow_dispatch:
+    inputs:
+      scan:
+        description: Escanear con Grype (SCAN)
+        type: boolean
+        default: true
+      sign:
+        description: Firmar con Cosign (SIGN)
+        type: boolean
+        default: true
+      sbom:
+        description: Adjuntar el SBOM firmado (SBOM)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # para el commit de deploy/
+
+concurrency:
+  group: ci
+  cancel-in-progress: false
+
+env:
+  REPO: docker.io/pabpereza/supply-chain-demo
+  SCAN: ${{ github.event_name == 'workflow_dispatch' && !inputs.scan && '0' || '1' }}
+  SIGN: ${{ github.event_name == 'workflow_dispatch' && !inputs.sign && '0' || '1' }}
+  SBOM: ${{ github.event_name == 'workflow_dispatch' && !inputs.sbom && '0' || '1' }}
+  COSIGN_VERSION: v3.1.4
+  SYFT_VERSION: v1.57.2
+  GRYPE_VERSION: v0.122.0
+  GRYPE_DB_AUTO_UPDATE: 'true'
+
+jobs:
+  pipeline:
+    # arm64, como el clúster kind de la demo: la imagen sale para la misma arquitectura
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pasos sincronizados con ci.sh
+        run: |
+          diff <(./ci.sh pasos) \
+               <(grep -oE '\./ci\.sh [a-z]+$' .github/workflows/ci.yml | awk '{print $2}' | grep -v '^pasos$') \
+            || { echo "::error::Los pasos de ci.yml no coinciden con PASOS de ci.sh"; exit 1; }
+
+      - name: Instalar Syft, Grype y Cosign
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin "$SYFT_VERSION"
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin "$GRYPE_VERSION"
+          sudo curl -sSfL -o /usr/local/bin/cosign \
+            "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-arm64"
+          sudo chmod +x /usr/local/bin/cosign
+          syft version | head -2; grype version | head -2; cosign version | grep GitVersion
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Clave del pipeline
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        run: |
+          printf '%s\n' "$COSIGN_PRIVATE_KEY" > "$RUNNER_TEMP/cosign.key"
+          echo "COSIGN_KEY=$RUNNER_TEMP/cosign.key" >> "$GITHUB_ENV"
+
+      - name: build
+        run: ./ci.sh build
+      - name: sbom (Syft)
+        run: ./ci.sh sbom
+      - name: scan (Grype)
+        run: ./ci.sh scan
+      - name: push
+        run: ./ci.sh push
+      - name: sign (Cosign)
+        run: ./ci.sh sign
+      - name: attest (SBOM firmado)
+        run: ./ci.sh attest
+      - name: deploy
+        run: ./ci.sh deploy
+
+      - name: SBOM como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+
+      - name: Commit de deploy/
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/deployment.yaml
+          git diff --cached --quiet && { echo "deploy/ sin cambios"; exit 0; }
+          git commit -m "deploy: $(grep -oE 'supply-chain-demo:[^ ]+' deploy/deployment.yaml)"
+          git push
+
+      - name: Borrar la clave
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cosign.key"

@@ -18,7 +18,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: web
-          image: docker.io/pabpereza/supply-chain-demo:dev@sha256:9a06cca7300fbcd5e783ea5c46c67e0bf71960c747ee6bb304eb4e560d9db8e1
+          image: docker.io/pabpereza/supply-chain-demo:dev
           ports:
             - containerPort: 8080
           securityContext:

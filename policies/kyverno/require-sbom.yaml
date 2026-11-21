@@ -1,0 +1,45 @@
+apiVersion: policies.kyverno.io/v1
+kind: ImageValidatingPolicy
+metadata:
+  name: require-sbom
+spec:
+  validationActions: [Deny]
+  failurePolicy: Fail
+  webhookConfiguration:
+    timeoutSeconds: 15
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: ['v1']
+        operations: ['CREATE', 'UPDATE']
+        resources: ['pods']
+  matchImageReferences:
+    - glob: 'docker.io/pabpereza/*'
+  validationConfigurations:
+    mutateDigest: false
+    verifyDigest: true
+    required: true
+  attestors:
+    - name: pipeline
+      cosign:
+        key:
+          data: |
+            -----BEGIN PUBLIC KEY-----
+            MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF4epwx/Eeud/c7ORSrntOsnWEcQe
+            OFQG9sXNsr6tDANCsLqbvxiOZdxSCkzI5iNGbA637uOpYQ3PyK0prk6GnQ==
+            -----END PUBLIC KEY-----
+        ctlog:
+          insecureIgnoreTlog: true
+          insecureIgnoreSCT: true
+  attestations:
+    # El SBOM que genera Syft y adjunta cosign attest --type cyclonedx
+    - name: sbom
+      intoto:
+        type: https://cyclonedx.org/bom
+  validations:
+    - expression: >-
+        images.containers.map(image, verifyAttestationSignatures(image, attestations.sbom, [attestors.pipeline])).all(e, e > 0)
+      message: 'imagen sin SBOM firmado por el pipeline'

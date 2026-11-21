@@ -27,7 +27,7 @@ grype sbom:sbom.cdx.json
 | Ruta | Qué es |
 |------|--------|
 | `app/` | La aplicación legítima (nginx sin privilegios) |
-| `attacker/` | La imagen del atacante |
+| `attacker/` | La imagen base sin `apk upgrade`: sirve para ver fallar a Grype |
 | `deploy/` | Lo que despliega Argo CD |
 | `policies/kyverno/guardarrailes.yaml` | Reglas básicas del Pod (CEL) |
 | `policies/kyverno/require-signed.yaml` | Verificación de la firma y del digest |
@@ -37,7 +37,6 @@ grype sbom:sbom.cdx.json
 | `slides/` | Las slides de la charla en PDF y su portada |
 | `ci.sh` | El pipeline: build, Syft, Grype, push, firma, SBOM firmado y digest en `deploy/`. `./ci.sh` lo ejecuta entero y `./ci.sh <paso>` uno solo |
 | `.github/workflows/ci.yml` | El mismo pipeline en GitHub Actions: llama a `./ci.sh <paso>` en cada step |
-| `attack.sh` | Sube la imagen del atacante con el tag que quieras |
 | `signing-config.json` | Configuración de firma de Cosign sin Rekor ni CA: la usan `ci.sh` y la práctica |
 | `cosign.pub` | Clave pública del pipeline (la privada nunca está en el repo) |
 
