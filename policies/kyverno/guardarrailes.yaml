@@ -1,5 +1,3 @@
-# Guardarraíles básicos. Se escribe para Pods y Kyverno genera solo (autogen)
-# la versión para Deployments, StatefulSets, Jobs, CronJobs...
 apiVersion: policies.kyverno.io/v1
 kind: ValidatingPolicy
 metadata:
